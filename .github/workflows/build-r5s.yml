@@ -1,0 +1,36 @@
+name: Build R5S baseline
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'config/**'
+      - 'package/**'
+      - '.github/workflows/**'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build OpenWrt R5S baseline and skeleton
+        uses: openwrt/firmware-builder@v1
+        with:
+          target: rockchip/armv8
+          profile: friendlyarm_nanopi-r5s
+          config: config/r5s-baseline.config
+      - name: Generate manifest and SHA256
+        shell: bash
+        run: |
+          find bin -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
+          find bin -type f -printf '%P\n' | sort > MANIFEST.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: liveguard-r5s-build-${{ github.sha }}
+          path: |
+            bin/**
+            MANIFEST.txt
+            SHA256SUMS
