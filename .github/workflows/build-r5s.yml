@@ -7,6 +7,9 @@ on:
       - config/**
       - package/**
       - .github/workflows/**
+      - r5s-baseline.config
+      - Makefile
+      - README.public
 
 permissions:
   contents: read
@@ -23,9 +26,10 @@ jobs:
       - name: Configure and build R5S
         working-directory: openwrt
         run: |
-          cp ../config/r5s-baseline.config .config
+          cp ../r5s-baseline.config .config
           mkdir -p package/liveguard-skeleton
-          cp -R ../package/liveguard-skeleton/* package/liveguard-skeleton/
+          cp ../Makefile package/liveguard-skeleton/Makefile
+          cp ../README.public package/liveguard-skeleton/README.public
           ./scripts/feeds update -a
           ./scripts/feeds install -a
           make defconfig
