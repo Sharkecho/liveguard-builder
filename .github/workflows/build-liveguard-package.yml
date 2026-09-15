@@ -1,0 +1,69 @@
+name: Build LiveGuard package
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: liveguard-package
+  cancel-in-progress: true
+
+env:
+  OPENWRT_VERSION: 24.10.8
+  SDK_URL: https://downloads.openwrt.org/releases/24.10.8/targets/rockchip/armv8/openwrt-sdk-24.10.8-rockchip-armv8_gcc-13.3.0_musl.Linux-x86_64.tar.zst
+  SDK_SHA256: 7ac9801311275b63aea3cba74e68c27fc74ced2a50a0c8f4b0d9adfd8ae768ea
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out public builder
+        uses: actions/checkout@v4
+
+      - name: Install SDK build dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential clang flex bison g++ gawk gettext git libncurses-dev libssl-dev rsync unzip zlib1g-dev file wget zstd
+
+      - name: Restore SDK cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            sdk/staging_dir
+            sdk/build_dir
+            sdk/dl
+          key: openwrt-sdk-24.10.8-rockchip-armv8
+
+      - name: Download and verify SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p sdk
+          if [ ! -x sdk/scripts/feeds ]; then
+            curl --fail --location --retry 3 "$SDK_URL" -o sdk.tar.zst
+            echo "$SDK_SHA256  sdk.tar.zst" | sha256sum -c -
+            tar --use-compress-program=unzstd -xf sdk.tar.zst --strip-components=1 -C sdk
+          fi
+
+      - name: Compile package only
+        working-directory: sdk
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p package/liveguard-skeleton
+          cp ../Makefile package/liveguard-skeleton/Makefile
+          cp ../README.public package/liveguard-skeleton/README.public
+          make defconfig
+          make package/liveguard-skeleton/clean
+          make package/liveguard-skeleton/compile V=s -j2
+          mkdir -p ../artifacts
+          find bin/packages -type f -print0 | sort -z | xargs -0 sha256sum > ../artifacts/SHA256SUMS
+          find bin/packages -type f -printf "%P\n" | sort > ../artifacts/MANIFEST.txt
+          cp -R bin/packages ../artifacts/packages
+
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: liveguard-package-${{ github.sha }}
+          path: artifacts/
