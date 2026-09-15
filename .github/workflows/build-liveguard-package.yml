@@ -1,0 +1,62 @@
+name: Build LiveGuard package
+
+on:
+  workflow_dispatch:
+    inputs:
+      sdk_url:
+        description: OpenWrt R5S SDK tarball URL matching the baseline
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out public builder
+        uses: actions/checkout@v4
+
+      - name: Restore package build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            sdk/staging_dir
+            sdk/build_dir
+            sdk/dl
+          key: openwrt-r5s-sdk-${{ hashFiles('config/r5s-baseline.config', 'package/**') }}
+
+      - name: Download and unpack R5S SDK
+        shell: bash
+        env:
+          SDK_URL: ${{ inputs.sdk_url }}
+        run: |
+          set -euo pipefail
+          mkdir -p sdk
+          curl --fail --location --retry 3 "$SDK_URL" -o sdk.tar.xz
+          tar -xJf sdk.tar.xz --strip-components=1 -C sdk
+
+      - name: Compile package only
+        working-directory: sdk
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p package/liveguard-skeleton
+          cp ../package/liveguard-skeleton/Makefile package/liveguard-skeleton/Makefile
+          cp ../package/liveguard-skeleton/README.public package/liveguard-skeleton/README.public
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+          make defconfig
+          make package/liveguard-skeleton/clean
+          make package/liveguard-skeleton/compile V=s -j2
+          mkdir -p ../artifacts
+          find bin/packages -type f -print0 | sort -z | xargs -0 sha256sum > ../artifacts/SHA256SUMS
+          find bin/packages -type f -printf '%P\n' | sort > ../artifacts/MANIFEST.txt
+          cp -R bin/packages ../artifacts/packages
+
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: liveguard-package-${{ github.sha }}
+          path: artifacts/
