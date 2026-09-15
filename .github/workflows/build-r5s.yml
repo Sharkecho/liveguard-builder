@@ -5,8 +5,7 @@ on:
   push:
     paths:
       - 'config/**'
-      - 'package/**'
-      - '.github/workflows/**'
+      - '.github/workflows/build-r5s.yml'
 
 permissions:
   contents: read

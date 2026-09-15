@@ -52,8 +52,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p package/liveguard-skeleton
-          cp ../Makefile package/liveguard-skeleton/Makefile
-          cp ../README.public package/liveguard-skeleton/README.public
+          cp ../package/liveguard-skeleton/Makefile package/liveguard-skeleton/Makefile
+          cp ../package/liveguard-skeleton/README.public package/liveguard-skeleton/README.public
           make defconfig
           make package/liveguard-skeleton/clean
           make package/liveguard-skeleton/compile V=s -j2
