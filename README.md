@@ -13,3 +13,8 @@ Artifacts are build outputs only. The workflow never connects to or deploys to a
 - `Build LiveGuard package` compiles only the package against a matching R5S
   SDK and uploads the package, manifest, and SHA256 file. It does not rebuild
   the firmware image and does not deploy anywhere.
+
+Both workflows are manual (`workflow_dispatch`) so a source push cannot
+silently spend a full firmware build. The package workflow uses the
+`package/liveguard-skeleton` tree; the baseline workflow keeps the verified
+Run #8 route pinned to OpenWrt `v24.10.8` and `config/r5s-baseline.config`.
